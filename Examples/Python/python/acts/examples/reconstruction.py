@@ -77,8 +77,9 @@ SeedFilterConfigArg = namedtuple(
         "maxQualitySeedsPerSpMConf",
         "useDeltaRorTopRadius",
         "deltaRMin",
+        "rosietestSFC",
     ],
-    defaults=[None] * 12,
+    defaults=[None] * 13,
 )
 
 SpacePointGridConfigArg = namedtuple(
@@ -179,6 +180,8 @@ def addSeeding(
     outputDirRoot: Optional[Union[Path, str]] = None,
     logLevel: Optional[acts.logging.Level] = None,
     rnd: Optional[acts.examples.RandomNumbers] = None,
+    rosietest: str = "rosie test defalt add seeding ",
+    rosieadd: str = "rosie add defalt add seeding ",
 ) -> None:
     """This function steers the seeding
     Parameters
@@ -291,6 +294,8 @@ def addSeeding(
                 seedFinderOptionsArg,
                 seedFilterConfigArg,
                 logLevel,
+                rosietest,
+                rosieadd,
             )
         else:
             logger.fatal("unknown seedingAlgorithm %s", seedingAlgorithm)
@@ -585,6 +590,8 @@ def addOrthogonalSeeding(
     seedFinderOptionsArg: SeedFinderOptionsArg,
     seedFilterConfigArg: SeedFilterConfigArg,
     logLevel: acts.logging.Level = None,
+    rosietest: str = "addorthoseeding default", 
+    rosieadd: str = "addorthoseeding default", 
 ):
     """adds orthogonal seeding algorithm
     For parameters description see addSeeding
@@ -663,8 +670,17 @@ def addOrthogonalSeeding(
             maxSeedsPerSpMConf=seedFilterConfigArg.maxSeedsPerSpMConf,
             maxQualitySeedsPerSpMConf=seedFilterConfigArg.maxQualitySeedsPerSpMConf,
             useDeltaRorTopRadius=seedFilterConfigArg.useDeltaRorTopRadius,
+             rosietestSFC = rosietest, 
         )
     )
+    
+        #this outputs a RosieTestFunc object 
+    RosieFuncOutput = acts.examples.RosieTestFunc(
+        level=logLevel, 
+        RosieTest = rosietest,
+        Adding = rosieadd, 
+        ) 
+
     seedingAlg = acts.examples.SeedingOrthogonalAlgorithm(
         level=logLevel,
         inputSpacePoints=[spacePoints],
@@ -673,6 +689,7 @@ def addOrthogonalSeeding(
         seedFilterConfig=seedFilterConfig,
         seedFinderConfig=seedFinderConfig,
         seedFinderOptions=seedFinderOptions,
+        RosieTestSOA = RosieFuncOutput.config.RosieTest,  
     )
     sequence.addAlgorithm(seedingAlg)
     return seedingAlg.config.outputProtoTracks, seedingAlg.config.outputSeeds

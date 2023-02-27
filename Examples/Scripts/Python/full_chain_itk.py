@@ -27,6 +27,7 @@ ttbar_pu200 = False
 u = acts.UnitConstants
 geo_dir = pathlib.Path("acts-itk")
 outputDir = pathlib.Path.cwd() / "itk_output"
+rosieteststr = "this string in from the ITK full chain"
 # acts.examples.dump_args_calls(locals())  # show acts.examples python binding calls
 
 detector, trackingGeometry, decorators = acts.examples.itk.buildITkGeometry(geo_dir)
@@ -89,6 +90,9 @@ addSeeding(
     *acts.examples.itk.itkSeedingAlgConfig("PixelSpacePoints"),
     geoSelectionConfigFile=geo_dir / "itk-hgtd/geoSelection-ITk.json",
     outputDirRoot=outputDir,
+    rosietest=rosieteststr,
+    rosieadd = " I added this all the way back in full chain"
+
 )
 
 addCKFTracks(
