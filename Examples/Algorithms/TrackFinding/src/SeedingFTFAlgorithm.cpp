@@ -154,7 +154,7 @@ ActsExamples::ProcessCode ActsExamples::SeedingFTFAlgorithm::execute(
       //use these vol and layer ids to look up FTF info 
       auto Find = ACTS_FTF.find(std::make_pair(vol_id,lay_id)) ; 
       int FTF_id = Find->second ;//find returns pointer to entry, need to ask for second part 
-      std::cout << "Space point" <<  " vol=  " << vol_id << "  lay= " << lay_id << "  FTF_ID " << FTF_id "\n" ;
+      std::cout << "Space point" <<  " vol=  " << vol_id << "  lay= " << lay_id << "  FTF_ID " << FTF_id  ;
     }
   }
 
