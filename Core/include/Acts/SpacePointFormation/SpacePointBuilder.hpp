@@ -40,11 +40,11 @@ class SpacePointBuilder {
   SpacePointBuilder(const SpacePointBuilderConfig& cfg,
                     std::function<spacepoint_t(
                         Acts::Vector3, Acts::Vector2,
-                        boost::container::static_vector<SourceLink, 2>)>
+                        boost::container::static_vector<SourceLink, 2>, int, int)>
                         func,
                     std::unique_ptr<const Logger> logger =
-                        getDefaultLogger("SpamcePointBuilder", Logging::INFO));
-
+                        getDefaultLogger("SpamcePointBuilder", Logging::INFO)); 
+    //here adding int as input to the input is changing 
   // Default constructor
   SpacePointBuilder() = default;
 
@@ -59,8 +59,8 @@ class SpacePointBuilder {
   void buildSpacePoint(
       const GeometryContext& gctx, const std::vector<SourceLink>& sourceLinks,
       const SpacePointBuilderOptions& opt,
-      std::back_insert_iterator<container_t<spacepoint_t>> spacePointIt) const;
-
+      std::back_insert_iterator<container_t<spacepoint_t>> spacePointIt, Acts::GeometryIdentifier geoId) const;
+        //rosie adding geoid as input to constructor so can access
   /// @brief Searches possible combinations of two SourceLinks on different
   /// surfaces that may come from the same particles
   ///
@@ -82,8 +82,9 @@ class SpacePointBuilder {
   /// @brief Function to create external space point
   /// The constructor of spacepoint_t with Vector3 global pos, Vector2 global
   /// cov, and vector of source link pointers.
+  //extra argument in constructor for volume 
   std::function<spacepoint_t(Acts::Vector3, Acts::Vector2,
-                             boost::container::static_vector<SourceLink, 2>)>
+                             boost::container::static_vector<SourceLink, 2>, int, int)> //this is how it said it's called in maker  
       m_spConstructor;
   /// the logging instance
   std::unique_ptr<const Acts::Logger> m_logger;

@@ -11,23 +11,25 @@ template <typename spacepoint_t>
 SpacePointBuilder<spacepoint_t>::SpacePointBuilder(
     const SpacePointBuilderConfig& cfg,
     std::function<spacepoint_t(Acts::Vector3, Acts::Vector2,
-                               boost::container::static_vector<SourceLink, 2>)>
-        func,
+                               boost::container::static_vector<SourceLink, 2>,int, int)>
+        func, //think this is spConstructor for SPmaker, need to add my argument 
     std::unique_ptr<const Logger> logger)
     : m_config(cfg), m_spConstructor(func), m_logger(std::move(logger)) {
   m_spUtility = std::make_shared<SpacePointUtility>(cfg);
-}
+} //think this is a constructor so m_spConstructor is set to SP CONSTRUCTOR! 
 
 template <typename spacepoint_t>
 template <template <typename...> typename container_t>
 void SpacePointBuilder<spacepoint_t>::buildSpacePoint(
     const GeometryContext& gctx, const std::vector<SourceLink>& sourceLinks,
     const SpacePointBuilderOptions& opt,
-    std::back_insert_iterator<container_t<spacepoint_t>> spacePointIt) const {
+    std::back_insert_iterator<container_t<spacepoint_t>> spacePointIt, Acts::GeometryIdentifier geoId) const {
   const unsigned int num_slinks = sourceLinks.size();
 
   Acts::Vector3 gPos = Acts::Vector3::Zero();
   Acts::Vector2 gCov = Acts::Vector2::Zero();
+  int vol_input = geoId.volume() ; //declare input here as a int, set to volume 
+  int lay_input = geoId.layer() ; 
 
   if (num_slinks == 1) {  // pixel SP formation
     auto slink = sourceLinks.at(0);
@@ -35,6 +37,7 @@ void SpacePointBuilder<spacepoint_t>::buildSpacePoint(
     auto gPosCov = m_spUtility->globalCoords(gctx, slink, param, cov);
     gPos = gPosCov.first;
     gCov = gPosCov.second;
+
   } else if (num_slinks == 2) {  // strip SP formation
 
     const auto& ends1 = opt.stripEndsPair.first;
@@ -82,8 +85,9 @@ void SpacePointBuilder<spacepoint_t>::buildSpacePoint(
   }
   boost::container::static_vector<SourceLink, 2> slinks(sourceLinks.begin(),
                                                         sourceLinks.end());
-
-  spacePointIt = m_spConstructor(gPos, gCov, std::move(slinks));
+  //rosie input is set to volume and then is the input to the constructor 
+  //this constructor is defined in the SPmaking, and sets the member to the value 
+  spacePointIt = m_spConstructor(gPos, gCov, std::move(slinks), vol_input, lay_input);
 }
 
 template <typename spacepoint_t>

@@ -83,20 +83,24 @@ ActsExamples::SpacePointMaker::SpacePointMaker(Config cfg,
                             << " geometry selection duplicates");
     m_cfg.geometrySelection.erase(geoSelLastUnique, geoSelEnd);
   }
+  //below is where the volume list is printed that appears in full chain output 
   ACTS_INFO("Space point geometry selection:");
   for (const auto& geoId : m_cfg.geometrySelection) {
     ACTS_INFO("  " << geoId);
   }
   auto spBuilderConfig = Acts::SpacePointBuilderConfig();
   spBuilderConfig.trackingGeometry = m_cfg.trackingGeometry;
-
+  
+  //constructor called on each space point later 
   auto spConstructor =
       [](const Acts::Vector3& pos, const Acts::Vector2& cov,
-         boost::container::static_vector<Acts::SourceLink, 2> slinks)
+         boost::container::static_vector<Acts::SourceLink, 2> slinks, int vol_input, int lay_input)
       -> SimSpacePoint {
-    return SimSpacePoint(pos, cov[0], cov[1], std::move(slinks));
+    return SimSpacePoint(pos, cov[0], cov[1], std::move(slinks), vol_input, lay_input);
+    //this is where the space point is filled, trying to have a new input in the constructor 
+    
   };
-
+  //one with my parameter is then input into builder 
   m_spacePointBuilder = Acts::SpacePointBuilder<SimSpacePoint>(
       spBuilderConfig, spConstructor,
       Acts::getDefaultLogger("SpacePointBuilder", lvl));
@@ -133,11 +137,12 @@ ActsExamples::ProcessCode ActsExamples::SpacePointMaker::execute(
     // arbitrary range. do the equivalent grouping manually
     auto groupedByModule = makeGroupBy(range, detail::GeometryIdGetter());
 
+    //this is where you make the space points in the for loop- may need to have geoId access here 
     for (auto [moduleGeoId, moduleSourceLinks] : groupedByModule) {
       for (auto& sourceLink : moduleSourceLinks) {
         m_spacePointBuilder.buildSpacePoint(
             ctx.geoContext, {Acts::SourceLink{sourceLink}}, spOpt,
-            std::back_inserter(spacePoints));
+            std::back_inserter(spacePoints), geoId);
       }
     }
   }

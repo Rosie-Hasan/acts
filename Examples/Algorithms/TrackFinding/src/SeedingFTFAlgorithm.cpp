@@ -8,6 +8,14 @@
 #include "ActsExamples/EventData/SimSeed.hpp"
 #include "ActsExamples/Framework/WhiteBoard.hpp"
 
+#include <iostream>
+#include <map>
+#include <fstream>
+#include <vector> 
+#include <sstream>
+
+using namespace std;
+
 //constructor: 
 ActsExamples::SeedingFTFAlgorithm::SeedingFTFAlgorithm(
     ActsExamples::SeedingFTFAlgorithm::Config cfg, 
@@ -80,6 +88,7 @@ ActsExamples::ProcessCode ActsExamples::SeedingFTFAlgorithm::execute(
         Acts::Vector3 position(sp->x(), sp->y(), sp->z());
         Acts::Vector2 variance(sp->varianceR(), sp->varianceZ());
         return std::make_pair(position, variance);
+        
       };  
 
 
@@ -98,9 +107,58 @@ ActsExamples::ProcessCode ActsExamples::SeedingFTFAlgorithm::execute(
 
   // //debug statement
   
-  // ctx.eventStore.add(m_cfg.outputSeeds, std::move(seeds));
-  // ctx.eventStore.add(m_cfg.outputProtoTracks, std::move(protoTracks));
+
   m_outputSeeds(ctx, std::move(seeds));
+
+
+  //think I should make the map here 
+  map<std::pair<int, int>,int> ACTS_FTF;
+
+  std::ifstream  data("ACTS_FTF_mapinput.csv");
+  std::string line;
+  std::vector<std::vector<std::string> > parsedCsv;
+  while(std::getline(data,line))
+  {
+      std::stringstream lineStream(line);
+      std::string cell;
+      std::vector<std::string> parsedRow;
+      while(std::getline(lineStream,cell,','))
+      {
+          parsedRow.push_back(cell); 
+      }
+
+      parsedCsv.push_back(parsedRow);
+            
+  }
+
+  for (auto i : parsedCsv){
+        
+      int FTF = stoi(i[0]); 
+      int ACTS_vol = stoi(i[1]); 
+      int ACTS_lay = stoi(i[2]);
+      ACTS_FTF.insert({{ACTS_vol,ACTS_lay},FTF}) ; 
+
+  }
+
+
+  //trying to print z and r 
+
+  for (const auto &isp : m_inputSpacePoints) {
+    for (const auto &spacePoint : (*isp)(ctx)) {
+
+      float z = spacePoint.z() ; 
+      float r = spacePoint.r() ; 
+      int vol_id = spacePoint.vol_id() ;
+      int lay_id = spacePoint.lay_id() ;  
+      //std::cout << "Space point" << " z= " << z << " r=  " << r << " vol=  " << vol_id << "  lay= " << lay_id << "  " ; //cant print space point as no << operator 
+      //use these vol and layer ids to look up FTF info 
+      auto Find = ACTS_FTF.find(std::make_pair(vol_id,lay_id)) ; 
+      int FTF_id = Find->second ;//find returns pointer to entry, need to ask for second part 
+      std::cout << "Space point" <<  " vol=  " << vol_id << "  lay= " << lay_id << "  FTF_ID " << FTF_id "\n" ;
+    }
+  }
+
+
 
 
   return ActsExamples::ProcessCode::SUCCESS;

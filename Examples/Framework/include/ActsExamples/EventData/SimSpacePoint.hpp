@@ -49,7 +49,9 @@ class SimSpacePoint {
       const Acts::Vector3& bottomStripDirection,
       const Acts::Vector3& stripCenterDistance,
       const Acts::Vector3& topStripCenterPosition)
-      : m_x(pos[Acts::ePos0]),
+      : m_vol_id(20), //constructor I'm not using so just setting to default value 
+        //seeing if dont need to set default value for layer number 
+        m_x(pos[Acts::ePos0]),
         m_y(pos[Acts::ePos1]),
         m_z(pos[Acts::ePos2]),
         m_rho(std::hypot(m_x, m_y)),
@@ -77,7 +79,8 @@ class SimSpacePoint {
   SimSpacePoint(
       const Eigen::MatrixBase<position_t>& pos, Scalar varRho, Scalar varZ,
       boost::container::static_vector<Acts::SourceLink, 2> sourceLinks)
-      : m_x(pos[Acts::ePos0]),
+      : m_vol_id(20), //constructor I'm not using so just setting to default value 
+        m_x(pos[Acts::ePos0]),
         m_y(pos[Acts::ePos1]),
         m_z(pos[Acts::ePos2]),
         m_rho(std::hypot(m_x, m_y)),
@@ -87,6 +90,27 @@ class SimSpacePoint {
     EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(position_t, 3);
   }
 
+
+  //trying to make own constructor 
+  template <typename position_t>
+  SimSpacePoint(
+      const Eigen::MatrixBase<position_t>& pos, Scalar varRho, Scalar varZ, 
+      boost::container::static_vector<Acts::SourceLink, 2> sourceLinks, int vol_input, int lay_input)
+      : m_vol_id(vol_input), //set value of this member to input 
+        m_lay_id(lay_input),
+        m_x(pos[Acts::ePos0]),
+        m_y(pos[Acts::ePos1]),
+        m_z(pos[Acts::ePos2]),
+        m_rho(std::hypot(m_x, m_y)),
+        m_varianceRho(varRho),
+        m_varianceZ(varZ),
+        m_sourceLinks(std::move(sourceLinks)) {
+    EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(position_t, 3);
+  }
+
+  
+  constexpr Scalar vol_id() const { return m_vol_id; } //getter
+  constexpr Scalar lay_id() const { return m_lay_id; } //getter  
   constexpr Scalar x() const { return m_x; }
   constexpr Scalar y() const { return m_y; }
   constexpr Scalar z() const { return m_z; }
@@ -115,6 +139,8 @@ class SimSpacePoint {
 
  private:
   // Global position
+  int m_vol_id; 
+  int m_lay_id ; 
   Scalar m_x;
   Scalar m_y;
   Scalar m_z;
