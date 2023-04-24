@@ -48,8 +48,9 @@ int main() {
 
     std::cout << ACTS_FTF.size(); 
 
-    auto FTF_id = ACTS_FTF.find(make_pair(20,12));
+    auto Find = ACTS_FTF.find(make_pair(19,12));
     //find returns a pointer to the element 
-    std::cout << FTF_id->second ; 
+    int FTF_id = Find->second ;
+    std::cout << FTF_id ; 
 }
 //to run this: g++ unordered_map.cpp -std=c++11 then ./a.out 

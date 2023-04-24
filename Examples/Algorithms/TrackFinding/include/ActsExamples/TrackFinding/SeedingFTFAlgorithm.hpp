@@ -30,13 +30,13 @@ class SeedingFTFAlgorithm final : public IAlgorithm {
     //two parameters that will be returned in function: 
     /// Output track seed collection.
     std::string outputSeeds;
-    /// Output proto track collection.
-    // std::string outputProtoTracks;
 
     Acts::SeedFilterConfig seedFilterConfig;
     //change to FTF type
     Acts::SeedFinderFTFConfig<SimSpacePoint> seedFinderConfig;
     Acts::SeedFinderOptions seedFinderOptions;
+
+    std::string layerMappingFile ; 
 
   }; 
 
@@ -47,6 +47,7 @@ class SeedingFTFAlgorithm final : public IAlgorithm {
   //constructor: 
   /// @param cfg is the algorithm configuration
   /// @param lvl is the logging level
+  //need new input of layer maping file 
   SeedingFTFAlgorithm(Config cfg, Acts::Logging::Level lvl); 
   
   //code to make the algorithm run 

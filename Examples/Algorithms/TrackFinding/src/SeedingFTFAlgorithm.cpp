@@ -1,5 +1,7 @@
 //basijng on seeding ortho and rosie test 
 #include "ActsExamples/TrackFinding/SeedingFTFAlgorithm.hpp"
+// #include "ActsExamples/TrackFinding/ACTS_FTF_mapinput.csv"
+
 
 #include "Acts/Seeding/Seed.hpp"
 #include "Acts/Seeding/SeedFilter.hpp"
@@ -19,11 +21,12 @@ using namespace std;
 //constructor: 
 ActsExamples::SeedingFTFAlgorithm::SeedingFTFAlgorithm(
     ActsExamples::SeedingFTFAlgorithm::Config cfg, 
-    Acts::Logging::Level lvl) 
+    Acts::Logging::Level lvl
+    ) 
     : ActsExamples::IAlgorithm("SeedingAlgorithm", lvl), 
       m_cfg(std::move(cfg)) {
     //fill config struct
-
+    m_cfg.layerMappingFile = m_cfg.layerMappingFile ; 
     //now interal units error on SeedFilter so using on all 3 
 
     m_cfg.seedFilterConfig = m_cfg.seedFilterConfig.toInternalUnits();
@@ -111,10 +114,10 @@ ActsExamples::ProcessCode ActsExamples::SeedingFTFAlgorithm::execute(
   m_outputSeeds(ctx, std::move(seeds));
 
 
-  //think I should make the map here 
+  //create map from csv 
   map<std::pair<int, int>,int> ACTS_FTF;
 
-  std::ifstream  data("ACTS_FTF_mapinput.csv");
+  std::ifstream data(m_cfg.layerMappingFile);
   std::string line;
   std::vector<std::vector<std::string> > parsedCsv;
   while(std::getline(data,line))
@@ -137,24 +140,27 @@ ActsExamples::ProcessCode ActsExamples::SeedingFTFAlgorithm::execute(
       int ACTS_vol = stoi(i[1]); 
       int ACTS_lay = stoi(i[2]);
       ACTS_FTF.insert({{ACTS_vol,ACTS_lay},FTF}) ; 
-
   }
 
-
-  //trying to print z and r 
-
+  //loop over space points, call on map 
   for (const auto &isp : m_inputSpacePoints) {
     for (const auto &spacePoint : (*isp)(ctx)) {
 
       float z = spacePoint.z() ; 
       float r = spacePoint.r() ; 
-      int vol_id = spacePoint.vol_id() ;
-      int lay_id = spacePoint.lay_id() ;  
-      //std::cout << "Space point" << " z= " << z << " r=  " << r << " vol=  " << vol_id << "  lay= " << lay_id << "  " ; //cant print space point as no << operator 
-      //use these vol and layer ids to look up FTF info 
-      auto Find = ACTS_FTF.find(std::make_pair(vol_id,lay_id)) ; 
-      int FTF_id = Find->second ;//find returns pointer to entry, need to ask for second part 
-      std::cout << "Space point" <<  " vol=  " << vol_id << "  lay= " << lay_id << "  FTF_ID " << FTF_id  ;
+      int ACTS_vol_id = int(spacePoint.vol_id())  ;
+      int ACTS_lay_id = spacePoint.lay_id() ;  
+      auto key = std::make_pair(ACTS_vol_id,ACTS_lay_id) ; 
+      auto Find = ACTS_FTF.find(key) ; 
+      // if (Find == ACTS_FTF.end()){
+      //     int FTF_id = 0 ; //not found 
+      // } 
+      // else {
+      //      //pair found 
+      // }
+      //find returns pointer to entry, need to ask for second part 
+      int FTF_id = Find->second ;
+      std::cout << "Space point" <<  " vol=  " << ACTS_vol_id << "  lay= " << ACTS_lay_id << "  FTF_ID " << FTF_id << "\n" ;
     }
   }
 
