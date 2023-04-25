@@ -82,7 +82,7 @@ ActsExamples::ProcessCode ActsExamples::SeedingFTFAlgorithm::execute(
   } 
 
   Acts::SeedFinderFTF<SimSpacePoint> finder(m_cfg.seedFinderConfig); 
-  //want to change 50 to SeedFinderFTF
+
 
   //need this function as create_coords is needed for seeds 
   std::function<std::pair<Acts::Vector3, Acts::Vector2>(
@@ -101,12 +101,7 @@ ActsExamples::ProcessCode ActsExamples::SeedingFTFAlgorithm::execute(
  
   SimSeedContainer seeds = finder.createSeeds(m_cfg.seedFinderOptions,
                                               spacePoints, create_coordinates);
-
-  //prototracks part, so far can just state, there is a loop over seeds  
-  //since update the last steps have changed: 
-
-
-  // ProtoTrackContainer protoTracks;                                
+                             
 
   // //debug statement
   
@@ -146,19 +141,14 @@ ActsExamples::ProcessCode ActsExamples::SeedingFTFAlgorithm::execute(
   for (const auto &isp : m_inputSpacePoints) {
     for (const auto &spacePoint : (*isp)(ctx)) {
 
-      float z = spacePoint.z() ; 
-      float r = spacePoint.r() ; 
       int ACTS_vol_id = int(spacePoint.vol_id())  ;
       int ACTS_lay_id = spacePoint.lay_id() ;  
       auto key = std::make_pair(ACTS_vol_id,ACTS_lay_id) ; 
       auto Find = ACTS_FTF.find(key) ; 
-      // if (Find == ACTS_FTF.end()){
-      //     int FTF_id = 0 ; //not found 
-      // } 
-      // else {
-      //      //pair found 
-      // }
-      //find returns pointer to entry, need to ask for second part 
+      if (Find == ACTS_FTF.end()){
+          int FTF_id = 0 ; //not found
+          std::cout<<"key not in map" ;  
+      } 
       int FTF_id = Find->second ;
       std::cout << "Space point" <<  " vol=  " << ACTS_vol_id << "  lay= " << ACTS_lay_id << "  FTF_ID " << FTF_id << "\n" ;
     }
