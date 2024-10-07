@@ -1,10 +1,10 @@
-// This file is part of the Acts project.
+// This file is part of the ACTS project.
 //
-// Copyright (C) 2018-2020 CERN for the benefit of the Acts project
+// Copyright (C) 2016 CERN for the benefit of the ACTS project
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <boost/test/unit_test.hpp>
 
@@ -12,7 +12,6 @@
 #include "Acts/Definitions/Direction.hpp"
 #include "Acts/Definitions/TrackParametrization.hpp"
 #include "Acts/Definitions/Units.hpp"
-#include "Acts/EventData/Charge.hpp"
 #include "Acts/EventData/GenericBoundTrackParameters.hpp"
 #include "Acts/EventData/GenericCurvilinearTrackParameters.hpp"
 #include "Acts/EventData/ParticleHypothesis.hpp"
@@ -31,18 +30,15 @@
 #include "Acts/Material/HomogeneousSurfaceMaterial.hpp"
 #include "Acts/Material/HomogeneousVolumeMaterial.hpp"
 #include "Acts/Material/MaterialSlab.hpp"
-#include "Acts/Propagator/AbortList.hpp"
-#include "Acts/Propagator/ActionList.hpp"
+#include "Acts/Propagator/ActorList.hpp"
 #include "Acts/Propagator/ConstrainedStep.hpp"
-#include "Acts/Propagator/DefaultExtension.hpp"
-#include "Acts/Propagator/DenseEnvironmentExtension.hpp"
 #include "Acts/Propagator/EigenStepper.hpp"
+#include "Acts/Propagator/EigenStepperDefaultExtension.hpp"
+#include "Acts/Propagator/EigenStepperDenseExtension.hpp"
 #include "Acts/Propagator/EigenStepperError.hpp"
 #include "Acts/Propagator/MaterialInteractor.hpp"
 #include "Acts/Propagator/Navigator.hpp"
 #include "Acts/Propagator/Propagator.hpp"
-#include "Acts/Propagator/StepperExtensionList.hpp"
-#include "Acts/Propagator/detail/Auctioneer.hpp"
 #include "Acts/Surfaces/BoundaryTolerance.hpp"
 #include "Acts/Surfaces/CurvilinearSurface.hpp"
 #include "Acts/Surfaces/PlaneSurface.hpp"
@@ -55,15 +51,11 @@
 #include "Acts/Utilities/UnitVectors.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <functional>
 #include <limits>
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -118,9 +110,6 @@ struct EndOfWorld {
   /// Maximum value in x-direction of the detector
   double maxX = 1_m;
 
-  /// @brief Constructor
-  EndOfWorld() = default;
-
   /// @brief Main call operator for the abort operation
   ///
   /// @tparam propagator_state_t State of the propagator
@@ -134,7 +123,7 @@ struct EndOfWorld {
   /// @return Boolean statement if the particle is still in the detector
   template <typename propagator_state_t, typename stepper_t,
             typename navigator_t>
-  bool operator()(propagator_state_t& state, const stepper_t& stepper,
+  bool checkAbort(propagator_state_t& state, const stepper_t& stepper,
                   const navigator_t& /*navigator*/,
                   const Logger& /*logger*/) const {
     const double tolerance = state.options.surfaceTolerance;
@@ -176,11 +165,19 @@ struct StepCollector {
   /// @param [out] result Struct which is filled with the data
   template <typename propagator_state_t, typename stepper_t,
             typename navigator_t>
-  void operator()(propagator_state_t& state, const stepper_t& stepper,
-                  const navigator_t& /*navigator*/, result_type& result,
-                  const Logger& /*logger*/) const {
+  void act(propagator_state_t& state, const stepper_t& stepper,
+           const navigator_t& /*navigator*/, result_type& result,
+           const Logger& /*logger*/) const {
     result.position.push_back(stepper.position(state.stepping));
     result.momentum.push_back(stepper.momentum(state.stepping));
+  }
+
+  template <typename propagator_state_t, typename stepper_t,
+            typename navigator_t>
+  bool checkAbort(propagator_state_t& /*state*/, const stepper_t& /*stepper*/,
+                  const navigator_t& /*navigator*/, result_type& /*result*/,
+                  const Logger& /*logger*/) const {
+    return false;
   }
 };
 
@@ -370,7 +367,6 @@ BOOST_AUTO_TEST_CASE(eigen_stepper_test) {
 
     copy.geoContext = state.geoContext;
     copy.extension = state.extension;
-    copy.auctioneer = state.auctioneer;
     copy.stepData = state.stepData;
 
     return copy;
@@ -544,14 +540,13 @@ BOOST_AUTO_TEST_CASE(eigen_stepper_test) {
   BOOST_CHECK_EQUAL(res.error(), EigenStepperError::StepSizeAdjustmentFailed);
 }
 
-/// @brief This function tests the EigenStepper with the DefaultExtension and
-/// the DenseEnvironmentExtension. The focus of this tests lies in the
-/// choosing of the right extension for the individual use case. This is
+/// @brief This function tests the EigenStepper with the EigenStepperDefaultExtension and
+/// the EigenStepperDenseExtension. The focus of this tests lies in
+/// the choosing of the right extension for the individual use case. This is
 /// performed with three different detectors:
 /// a) Pure vacuum -> DefaultExtension needs to act
 /// b) Pure Be -> DenseEnvironmentExtension needs to act
-/// c) Vacuum - Be - Vacuum -> Both should act and switch during the
-/// propagation
+/// c) Vacuum - Be - Vacuum -> Both should act and switch during the propagation
 
 // Test case a). The DenseEnvironmentExtension should state that it is not
 // valid in this case.
@@ -586,12 +581,10 @@ BOOST_AUTO_TEST_CASE(step_extension_vacuum_test) {
   const CurvilinearTrackParameters sbtp(Vector4::Zero(), startDir, 1_e / 1_GeV,
                                         cov, ParticleHypothesis::pion());
 
-  using Stepper = EigenStepper<
-      StepperExtensionList<DefaultExtension, DenseEnvironmentExtension>,
-      detail::HighestValidAuctioneer>;
+  using Stepper = EigenStepper<EigenStepperDenseExtension>;
   using Propagator = Propagator<Stepper, Navigator>;
   using PropagatorOptions =
-      Propagator::Options<ActionList<StepCollector>, AbortList<EndOfWorld>>;
+      Propagator::Options<ActorList<StepCollector, EndOfWorld>>;
 
   // Set options for propagator
   PropagatorOptions propOpts(tgContext, mfContext);
@@ -620,12 +613,10 @@ BOOST_AUTO_TEST_CASE(step_extension_vacuum_test) {
     CHECK_CLOSE_ABS(mom, startMom, 1_keV);
   }
 
-  using DefStepper = EigenStepper<
-      StepperExtensionList<DefaultExtension, DenseEnvironmentExtension>,
-      detail::HighestValidAuctioneer>;
+  using DefStepper = EigenStepper<EigenStepperDenseExtension>;
   using DefPropagator = Acts::Propagator<DefStepper, Navigator>;
   using DefPropagatorOptions =
-      DefPropagator::Options<ActionList<StepCollector>, AbortList<EndOfWorld>>;
+      DefPropagator::Options<ActorList<StepCollector, EndOfWorld>>;
 
   // Set options for propagator
   DefPropagatorOptions propOptsDef(tgContext, mfContext);
@@ -685,12 +676,10 @@ BOOST_AUTO_TEST_CASE(step_extension_material_test) {
   const CurvilinearTrackParameters sbtp(Vector4::Zero(), startDir, 1_e / 5_GeV,
                                         cov, ParticleHypothesis::pion());
 
-  using Stepper = EigenStepper<
-      StepperExtensionList<DefaultExtension, DenseEnvironmentExtension>,
-      detail::HighestValidAuctioneer>;
+  using Stepper = EigenStepper<EigenStepperDenseExtension>;
   using Propagator = Propagator<Stepper, Navigator>;
   using PropagatorOptions =
-      Propagator::Options<ActionList<StepCollector>, AbortList<EndOfWorld>>;
+      Propagator::Options<ActorList<StepCollector, EndOfWorld>>;
 
   // Set options for propagator
   PropagatorOptions propOpts(tgContext, mfContext);
@@ -728,13 +717,10 @@ BOOST_AUTO_TEST_CASE(step_extension_material_test) {
     }
   }
 
-  using DenseStepper =
-      EigenStepper<StepperExtensionList<DenseEnvironmentExtension>,
-                   detail::HighestValidAuctioneer>;
+  using DenseStepper = EigenStepper<EigenStepperDenseExtension>;
   using DensePropagator = Acts::Propagator<DenseStepper, Navigator>;
   using DensePropagatorOptions =
-      DensePropagator::Options<ActionList<StepCollector>,
-                               AbortList<EndOfWorld>>;
+      DensePropagator::Options<ActorList<StepCollector, EndOfWorld>>;
 
   // Rebuild and check the choice of extension
   // Set options for propagator
@@ -835,16 +821,14 @@ BOOST_AUTO_TEST_CASE(step_extension_vacmatvac_test) {
                                   1_e / 5_GeV, Covariance::Identity(),
                                   ParticleHypothesis::pion());
 
-  using Stepper = EigenStepper<
-      StepperExtensionList<DefaultExtension, DenseEnvironmentExtension>,
-      detail::HighestValidAuctioneer>;
+  using Stepper = EigenStepper<EigenStepperDenseExtension>;
   using Propagator = Acts::Propagator<Stepper, Navigator>;
   using PropagatorOptions =
-      Propagator::Options<ActionList<StepCollector>, AbortList<EndOfWorld>>;
+      Propagator::Options<ActorList<StepCollector, EndOfWorld>>;
 
   // Set options for propagator
   PropagatorOptions propOpts(tgContext, mfContext);
-  propOpts.abortList.get<EndOfWorld>().maxX = 3_m;
+  propOpts.actorList.get<EndOfWorld>().maxX = 3_m;
   propOpts.maxSteps = 1000;
   propOpts.stepping.maxStepSize = 1.5_m;
 
@@ -891,13 +875,13 @@ BOOST_AUTO_TEST_CASE(step_extension_vacmatvac_test) {
   // Build launcher through vacuum
   // Set options for propagator
 
-  using DefStepper = EigenStepper<StepperExtensionList<DefaultExtension>>;
+  using DefStepper = EigenStepper<EigenStepperDenseExtension>;
   using DefPropagator = Acts::Propagator<DefStepper, Navigator>;
   using DefPropagatorOptions =
-      DefPropagator::Options<ActionList<StepCollector>, AbortList<EndOfWorld>>;
+      DefPropagator::Options<ActorList<StepCollector, EndOfWorld>>;
 
   DefPropagatorOptions propOptsDef(tgContext, mfContext);
-  propOptsDef.abortList.get<EndOfWorld>().maxX = 3_m;
+  propOptsDef.actorList.get<EndOfWorld>().maxX = 3_m;
   propOptsDef.maxSteps = 1000;
   propOptsDef.stepping.maxStepSize = 1.5_m;
 
@@ -941,16 +925,14 @@ BOOST_AUTO_TEST_CASE(step_extension_vacmatvac_test) {
   // Set initial parameters for the particle track by using the result of the
   // first volume
 
-  using DenseStepper = EigenStepper<
-      StepperExtensionList<DefaultExtension, DenseEnvironmentExtension>>;
+  using DenseStepper = EigenStepper<EigenStepperDenseExtension>;
   using DensePropagator = Acts::Propagator<DenseStepper, Navigator>;
   using DensePropagatorOptions =
-      DensePropagator::Options<ActionList<StepCollector>,
-                               AbortList<EndOfWorld>>;
+      DensePropagator::Options<ActorList<StepCollector, EndOfWorld>>;
 
   // Set options for propagator
   DensePropagatorOptions propOptsDense(tgContext, mfContext);
-  propOptsDense.abortList.get<EndOfWorld>().maxX = 3_m;
+  propOptsDense.actorList.get<EndOfWorld>().maxX = 3_m;
   propOptsDense.maxSteps = 1000;
   propOptsDense.stepping.maxStepSize = 1.5_m;
 
@@ -1072,17 +1054,14 @@ BOOST_AUTO_TEST_CASE(step_extension_trackercalomdt_test) {
                                   1_e / 1_GeV, Covariance::Identity(),
                                   ParticleHypothesis::pion());
 
-  using Stepper = EigenStepper<
-      StepperExtensionList<DefaultExtension, DenseEnvironmentExtension>,
-      detail::HighestValidAuctioneer>;
+  using Stepper = EigenStepper<EigenStepperDenseExtension>;
   using Propagator = Acts::Propagator<Stepper, Navigator>;
-  using PropagatorOptions =
-      Propagator::Options<ActionList<StepCollector, MaterialInteractor>,
-                          AbortList<EndOfWorld>>;
+  using PropagatorOptions = Propagator::Options<
+      ActorList<StepCollector, MaterialInteractor, EndOfWorld>>;
 
   // Set options for propagator
   PropagatorOptions propOpts(tgContext, mfContext);
-  propOpts.abortList.get<EndOfWorld>().maxX = 3._m;
+  propOpts.actorList.get<EndOfWorld>().maxX = 3._m;
   propOpts.maxSteps = 10000;
 
   // Build stepper and propagator
