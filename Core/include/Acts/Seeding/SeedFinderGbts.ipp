@@ -11,7 +11,6 @@
 
 #include "Acts/Definitions/Algebra.hpp"  //for M_PI
 #include "Acts/Geometry/Extent.hpp"
-// #include "Acts/Seeding/SeedFilter.hpp"
 #include "Acts/Seeding/SeedFinder.hpp"
 #include "Acts/Seeding/SeedFinderGbtsConfig.hpp"
 #include "Acts/Seeding/SeedFinderUtils.hpp"
